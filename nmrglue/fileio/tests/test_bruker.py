@@ -10,6 +10,36 @@ import tempfile
 # Test data.
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'bruker_test_data')
 
+
+def test_guess_udic_reference_frequency():
+    """Bruker observation and reference frequencies remain distinct."""
+    dic = {
+        'acqus': {
+            'AQ_mod': 3,
+            'NUC1': '1H',
+            'O1': 100000.0,
+            'SFO1': 400.1,
+            'SW_h': 10000.0,
+        },
+        'procs': {'SF': 400.0},
+    }
+    data = np.zeros(8, dtype=np.complex128)
+
+    udic = ng.bruker.guess_udic(dic, data)
+    converter = ng.convert.converter()
+    converter.from_bruker(dic, data)
+    pipe_dic, pipe_data = converter.to_pipe()
+
+    assert udic[0]['obs'] == 400.1
+    assert udic[0]['ref'] == 400.0
+    assert np.isclose(udic[0]['car'], 100000.0)
+    assert pipe_dic['FDF2OBS'] == 400.0
+    assert np.isclose(pipe_dic['FDF2CAR'], 250.0)
+    assert np.allclose(
+        ng.fileiobase.uc_from_udic(udic).ppm_scale(),
+        ng.pipe.make_uc(pipe_dic, pipe_data).ppm_scale(),
+    )
+
 def test_read_pdata():
     """Reading processed bruker 1D data"""
 
