@@ -950,7 +950,7 @@ def write_fid(filename, dic, data, torder='flat', repack=False, correct=True,
 
 
 def write_fid_lowmem(filename, dic, data, torder='f', repack=False,
-                     overwrite=False):
+                     overwrite=False, correct=True):
     """
     Write a Agilent/Varian binary (fid) file using minimal amounts of memory.
 
@@ -969,14 +969,14 @@ def write_fid_lowmem(filename, dic, data, torder='f', repack=False,
         Trace ordering.  See :py:func:`read` for details.
     repack : bool, optional
         True to repack file and block headers. False leave as is.
+    overwrite : bool, optional
+        Set True to overwrite an existing file, False will raise a Warning if
+        the file exists.
     correct : bool, optional
         True (the default) will correct mis-sized np and nblocks values in dic.
         False will write out the incorrect values to the file header and
         record the full data set, the resulting file will not be readable by
         nmrglue.
-    overwrite : bool, optional
-        Set True to overwrite an existing file, False will raise a Warning if
-        the file exists.
 
     See Also
     --------
