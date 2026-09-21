@@ -1,14 +1,33 @@
 """ Unit tests for nmrglue/fileio/fileiobase.py module """
 
+import copy
 import os
 
+import numpy as np
 from numpy.testing import assert_array_equal
 import nmrglue as ng
+import pytest
 
 
 # Test data.
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 NMRPIPE_1D_FREQ = os.path.join(DATA_DIR, 'nmrpipe_1d_freq.fid')
+
+
+class DummyDataND(ng.fileiobase.data_nd):
+    """Minimal data_nd implementation for testing base-class operations."""
+
+    def __init__(self, order=(0, 1)):
+        self.fshape = (2, 3)
+        self.order = tuple(order)
+        self.dtype = np.dtype("float64")
+        self.__setdimandshape__()
+
+    def __fcopy__(self, order):
+        return DummyDataND(order)
+
+    def __fgetitem__(self, slices):
+        return np.arange(6).reshape(self.fshape)[slices]
 
 
 def test_uc_from_freqscale():
@@ -57,3 +76,30 @@ def test_update_uc():
     assert abs(uc2._sw - 2.0) < 1e-5
     assert abs(uc2._car - 5.2) < 1e-5
     assert abs(uc2._obs - 3.0) < 1e-5
+
+
+def test_data_nd_copy():
+    data = DummyDataND()
+
+    copied = copy.copy(data)
+
+    assert copied is not data
+    assert copied.order == data.order
+    assert_array_equal(copied[:], data[:])
+
+
+@pytest.mark.parametrize("axes", [(-1, 0), (0, -1)])
+def test_data_nd_swapaxes_with_negative_axis(axes):
+    data = DummyDataND()
+
+    swapped = data.swapaxes(*axes)
+
+    assert swapped.order == (1, 0)
+    assert swapped.shape == (3, 2)
+    assert_array_equal(swapped[:], np.arange(6).reshape(2, 3).swapaxes(0, 1))
+
+
+@pytest.mark.parametrize("axes", [(-3, 0), (0, -3), (2, 0), (0, 2)])
+def test_data_nd_swapaxes_rejects_invalid_axis(axes):
+    with pytest.raises(ValueError):
+        DummyDataND().swapaxes(*axes)
