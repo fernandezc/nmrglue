@@ -2,8 +2,10 @@
 
 import os
 
+import numpy as np
 from numpy.testing import assert_array_equal
 import nmrglue as ng
+import pytest
 
 
 # Test data.
@@ -57,3 +59,65 @@ def test_update_uc():
     assert abs(uc2._sw - 2.0) < 1e-5
     assert abs(uc2._car - 5.2) < 1e-5
     assert abs(uc2._obs - 3.0) < 1e-5
+
+
+class DummyDataND(ng.fileiobase.data_nd):
+    """
+    Minimal data_nd subclass backed by an in-memory array.
+    """
+
+    def __init__(self, fshape, order=None):
+        self.fshape = tuple(fshape)
+        if order is None:
+            order = range(len(self.fshape))
+        self.order = tuple(order)
+        self.cplex = False
+        self.big = True
+        self.__setdimandshape__()
+
+    def __fgetitem__(self, slices):
+        return np.arange(np.prod(self.fshape)).reshape(self.fshape)[slices]
+
+    def __fcopy__(self, order):
+        return DummyDataND(self.fshape, order)
+
+
+# regression test for https://github.com/jjhelmus/nmrglue/issues/286
+def test_data_nd_transpose_1d():
+    """
+    Test that transpose is accepted on one-dimensional data.
+    """
+    data = DummyDataND(fshape=(5,))
+    assert data.transpose().shape == (5,)
+    assert data.transpose(0).shape == (5,)
+    assert data.transpose(np.int64(0)).shape == (5,)
+    assert data.transpose((0,)).shape == (5,)
+    assert_array_equal(data.transpose()[:], np.arange(5))
+
+
+# regression test for https://github.com/jjhelmus/nmrglue/issues/287
+@pytest.mark.parametrize("axis", [0.5, 0.0])
+def test_data_nd_rejects_float_axes(axis):
+    """
+    Test that float axis arguments are rejected, as numpy does.
+    """
+    data = DummyDataND(fshape=(2, 3))
+    with pytest.raises(TypeError):
+        data.swapaxes(axis, 1)
+    with pytest.raises(TypeError):
+        data.swapaxes(1, axis)
+    with pytest.raises(TypeError):
+        data.transpose(axis, 1)
+    with pytest.raises(TypeError):
+        data.transpose(1, axis)
+
+
+def test_data_nd_transpose_2d():
+    """
+    Test that two-dimensional transpose is unchanged.
+    """
+    data = DummyDataND(fshape=(3, 4))
+    expected = np.arange(12).reshape(3, 4)
+    assert_array_equal(data.transpose()[:], expected.transpose())
+    assert_array_equal(data.transpose(1, 0)[:], expected.transpose(1, 0))
+    assert_array_equal(data.transpose((1, 0))[:], expected.transpose(1, 0))

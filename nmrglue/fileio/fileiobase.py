@@ -4,6 +4,7 @@ used by multiple nmrglue.fileio modules.
 """
 
 
+import numbers
 import os
 import string
 import sys
@@ -729,7 +730,7 @@ class data_nd:
         """
         Return object with `axis1` and `axis2` interchanged.
         """
-        axis1, axis2 = int(axis1), int(axis2)
+        axis1, axis2 = operator.index(axis1), operator.index(axis2)
         if axis1 < 0:
             axis1 = self.ndim - axis1
         if axis2 < 0:
@@ -767,12 +768,13 @@ class data_nd:
         if axes == ():    # default is to switch order of axes
             axes = range(self.ndim)[::-1]
 
-        if len(axes) == 1:    # if a single tuple is given unpack
+        if len(axes) == 1 and not isinstance(axes[0], numbers.Integral):
+            # if a single tuple is given unpack
             axes = axes[0]
 
         try:    # convert to integers
-            axes = [int(i) for i in axes]
-        except:
+            axes = [operator.index(i) for i in axes]
+        except TypeError:
             raise TypeError("an integer is required")
 
         if len(axes) != self.ndim:   # check for to few/many axes
